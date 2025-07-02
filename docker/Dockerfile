@@ -1,9 +1,19 @@
-FROM docker.io/alpine:3.20.6
+FROM docker.io/ubuntu:24.04
+
+
+ENV DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 EXPOSE 4000/tcp
 
-RUN apk add python3 py3-opencv gst-plugins-good
+RUN apt update && \
+    apt install -y --no-install-recommends \
+        python3 \
+        python3-venv \
+        python3-pip \
+        python3-opencv \
+        gstreamer1.0-plugins-good && \
+    apt clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/
 RUN python3 -m venv --system-site-packages venv && venv/bin/pip3 install -r requirements.txt
