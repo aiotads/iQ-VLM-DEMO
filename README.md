@@ -4,8 +4,9 @@
 
 ## Prerequisites
 
-* A running **OGenie server**
-* A **webcam** connected to the **Qualcomm platform**
+* A running **OGenie server**.
+  > not publicly available, please contact us for access
+* A **webcam** connected to the **Qualcomm platform**. (1920x1080 MJPG 30 FPS)
 
 ## Steps on the Qualcomm Platform
 
