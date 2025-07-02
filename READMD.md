@@ -1,5 +1,7 @@
 # iQ-VLM-DEMO
 
+<img src="docs/vlm.gif" width="500"/>
+
 ## Prerequisites
 
 * A running **OGenie server**
