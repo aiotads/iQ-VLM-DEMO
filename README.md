@@ -27,3 +27,7 @@
    ```bash
    ./docker/run.sh
    ```
+
+   <img src="docs/console.png" width="600"/>
+
+4. **Open `192.168.3.206:4000` using your web browser**
