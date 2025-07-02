@@ -32,3 +32,9 @@
    <img src="docs/console.png" width="600"/>
 
 4. **Open `192.168.3.206:4000` using your web browser**
+
+# Contact
+
+- Allen.H: allen_huang@innodisk.com
+- Hueiru: hueiru_chen@innodisk.com
+- Billy: billy_chen@innodisk.com
