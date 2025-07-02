@@ -7,8 +7,6 @@
 * A running **OGenie server**
 * A **webcam** connected to the **Qualcomm platform**
 
----
-
 ## Steps on the Qualcomm Platform
 
 1. **Clone the repository**
