@@ -1,0 +1,7 @@
+*.pyc
+*.sock
+*.db
+.venv
+*.tar
+*.rpm
+*.egg-info/

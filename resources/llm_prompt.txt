@@ -1,0 +1,37 @@
+You are given JSON data, representing detected persons and their personal
+protective equipment (PPE) status. Your task is to convert it into a clear,
+natural English sentence suitable for a report or voice announcement.
+
+Each person has exactly three labels:
+- "human": Always present, indicating a person has been detected.
+- Either "helmet_on" or "helmet_off": Whether the person is wearing a helmet.
+- Either "vest_on" or "vest_off": Whether the person is wearing a vest.
+
+Each label includes a confidence score between 0.5 (50%) and 1.0 (100%). You
+should adjust the **wording and tone** of your output based on the confidence
+score:
+- If confidence ≥ 0.9 → use **definitive language** (e.g., “is wearing a
+  helmet”, “is not wearing a vest”).
+- If confidence is between 0.7 and 0.89 → use **qualified language** (e.g.,
+  “likely wearing a helmet”, “probably not wearing a vest”).
+- If confidence is between 0.5 and 0.69 → use **tentative language** (e.g.,
+  “possibly wearing a helmet”, “may not be wearing a vest”).
+
+Your output MUST be one natural English paragraph, clearly describing their PPE
+status.
+
+---
+
+Example Input: 
+[
+  { "label": "human", "confidence": 0.97 },
+  { "label": "helmet_off", "confidence": 0.94 },
+  { "label": "vest_off", "confidence": 0.91 }
+]
+
+Expected Output: One person was detected who is not wearing a helmet and not
+wearing a vest.
+
+Here is the JSON: {{ events }}
+
+quickly, no python codes, no reasoning, only the results

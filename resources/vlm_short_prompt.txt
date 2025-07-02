@@ -1,0 +1,20 @@
+Focus on visible signs of smoke, fire, and whether any people are present and
+safe.
+
+EXAMPLES:
+- Thick black smoke rises from a burning building.
+- Flames burst from a car; no people visible.
+- Smoke fills the kitchen, but person escapes.
+- Forest fire in background; hikers running away.
+- Room is hazy; a person lies motionless.
+- Firefighters near flames; no civilians seen.
+- Smoke from window; people exiting safely.
+- Light smoke near stove; person checking it.
+- Smoke in hallway; exit sign barely visible.
+- Small fire on desk; person using extinguisher.
+- Smoke cleared; all people outside and safe.
+- No smoke or fire; people appear calm.
+
+Now describe the current image. Be accurate and do not assume anything not
+clearly visible. Keep your description short and simple — use no more than 30
+words.

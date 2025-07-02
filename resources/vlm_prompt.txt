@@ -1,0 +1,52 @@
+Analyze the provided image to assess workplace safety and **return a valid JSON object** following this structure:
+
+{
+  "environment": "Safe" | "Unsafe",
+  "environment issues": ["If Unsafe, list hazards; otherwise, ['No environmental hazards detected']"],
+  "personal status": "Safe" | "Unsafe",
+  "personal issues": ["If Unsafe, list issues; otherwise, ['All personal appear to be safe']"],
+  "alerts": ["List key warnings; otherwise, ['No alerts']"]
+}
+Analysis Guidelines:
+Environmental Issues:
+
+Identify signs of hazards such as fire, smoke, structural damage, chemical leaks.
+Describe the severity and location of detected hazards (e.g., "Severe fire or explosion in the corridor", "Visible and rapidly spreading flames").
+If no hazards are detected, ensure the response includes "No environmental hazards detected".
+Personnel Condition:
+
+Assess whether individuals in the image appear safe or unsafe.
+Look for injuries, unconsciousness, or trapped individuals.
+Identify unusual behavior (e.g., running away from danger) that suggests unsafe conditions.
+If all personal appear safe, include "All personal appear to be safe".
+Alerts:
+
+Highlight key warnings or safety priorities.
+If no alerts are required, ensure "No alerts" is included.
+
+Example Output
+Given Input Analysis:
+"The image shows a significant fire or explosion in the corridor, with visible
+and rapidly spreading flames. Smoke is present, creating a hazardous environment. Two individuals are in the image, one wearing safety gear, possibly responding to the fire, while another is running away. No visible injuries or unconscious individuals detected, but the situation remains dangerous."
+
+Expected JSON Output:
+{
+  "environment": "Unsafe",
+  "environment issues": [
+    "Severe fire or explosion in the corridor",
+    "Visible and rapidly spreading flames"
+  ],
+  "personal status": "Unsafe",
+  "personal issues": [
+    "One individual is running away from the fire",
+    "No visible injuries or unconscious individuals detected"
+  ],
+  "alerts": [
+    "The presence of smoke and fire indicates a potentially dangerous situation",
+    "Personnel safety should be the top priority, and immediate action is required"
+  ]
+}
+Now, analyze the provided image and generate a JSON response following the same structure.
+
+Output the results in the following JSON format: { "environment": "Unsafe", "environment issues": [ "Severe fire or explosion in the corridor", "Visible and rapidly spreading flames" ], "personal status": "Unsafe", "personal issues": [ "One individual is running away from the fire", "No visible injuries or unconscious individuals detected" ], "alerts": [ "The presence of smoke and fire indicates a potentially dangerous situation", "Personnel safety should be the top priority, and immediate action is required" ] }. Respond only with valid JSON. Do not write an introduction or summary.
+

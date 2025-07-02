@@ -1,0 +1,52 @@
+[project]
+requires-python = ">=3.10"
+name = "ppes-llm"
+version = "0.0.1"
+dependencies = [
+    "langchain-ollama==0.3.2",
+    "websockets==15.0.1",
+    "nicegui==2.18.0",
+    "httpx==0.28.1",
+    "loguru==0.7.3",
+    "numpy==1.26.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["ppes"]
+
+[tool.setuptools]
+packages = []
+
+[tool.ruff.lint]
+select = [
+    # "ALL",
+
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "C4",   # flake8-comprehensions
+    "C90",  # mccabe
+    "F",    # pyflakes
+    "FA102",# flake8-future-annotations
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",    # isort
+    "Q",    # flake8-quotes
+    "A"     # flake8-builtins
+]
+# ignore = ["ANN"]
+
+[tool.pylsp-mypy]
+enabled = true
+live_mode = true
+strict = false
+report_progress = true
+overrides = ["--python-executable", "./.venv/bin/python3", true]
+
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
