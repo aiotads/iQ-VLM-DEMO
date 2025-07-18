@@ -1,4 +1,4 @@
-FROM docker.io/ubuntu:24.04
+FROM docker.io/ubuntu:22.04
 
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -6,20 +6,25 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 EXPOSE 4000/tcp
 
-RUN apt update && \
-    apt install -y --no-install-recommends \
-        python3 \
+# Enable apt cache
+RUN rm -f /etc/apt/apt.conf.d/docker-clean; \
+    echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+# Install run-time dependencies
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt update && apt --no-install-recommends install -y \
         python3-venv \
-        python3-pip \
-        python3-opencv \
-        gstreamer1.0-plugins-good && \
-    apt clean && rm -rf /var/lib/apt/lists/*
+        xkb-data \
+        libgdk-pixbuf2.0-0 \
+        fontconfig \
+        ;
 
 COPY requirements.txt /app/
-RUN python3 -m venv --system-site-packages venv && venv/bin/pip3 install -r requirements.txt
+RUN python3 -m venv venv && venv/bin/pip3 install -r requirements.txt
 
-COPY webcam.py  /app/
+COPY webcam.py webcam_desktop.py docker/env.sh /app/
 COPY resources/vlm_short_prompt.txt /app/vlm_prompt.txt
 
-CMD [ "venv/bin/python3", "webcam.py" ]
+CMD [ "./env.sh", "venv/bin/python3", "webcam_desktop.py" ]
 
