@@ -24,7 +24,7 @@ COPY requirements.txt /app/
 RUN python3 -m venv venv && venv/bin/pip3 install -r requirements.txt
 
 COPY webcam.py webcam_desktop.py docker/env.sh /app/
-COPY resources/vlm_short_prompt.txt /app/vlm_prompt.txt
+COPY resources/vlm_prompt.txt /app/
 
 CMD [ "./env.sh", "venv/bin/python3", "webcam_desktop.py" ]
 
