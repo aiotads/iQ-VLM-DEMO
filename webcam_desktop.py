@@ -227,6 +227,9 @@ def video_source():
             continue
 
         raw = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+        if raw is None:
+            continue
+
         bus.put(Message(image=raw))
 
         images.append(frame)
