@@ -1,4 +1,4 @@
-FROM docker.io/ubuntu:22.04
+FROM docker.io/ubuntu:24.04
 
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -26,5 +26,7 @@ RUN python3 -m venv venv && venv/bin/pip3 install -r requirements.txt
 COPY webcam.py webcam_desktop.py docker/env.sh /app/
 COPY resources/vlm_prompt.txt /app/
 
-CMD [ "./env.sh", "venv/bin/python3", "webcam_desktop.py" ]
 
+LABEL BSP_VERSION="0.0.1"
+LABEL APP_VERSION="1.0.0"
+CMD [ "./env.sh", "venv/bin/python3", "webcam_desktop.py" ]
