@@ -24,9 +24,10 @@ COPY requirements.txt /app/
 RUN python3 -m venv venv && venv/bin/pip3 install -r requirements.txt
 
 COPY webcam.py webcam_desktop.py docker/env.sh /app/
-COPY resources/vlm_prompt.txt /app/
+COPY resources/vlm_story_prompt.txt /opt/innodisk/ppes/llm/iqs_vlm_prompt.txt
 
 
 LABEL BSP_VERSION="0.0.1"
 LABEL APP_VERSION="1.0.0"
-CMD [ "./env.sh", "venv/bin/python3", "webcam_desktop.py" ]
+WORKDIR  /workspace
+CMD [ "/app/env.sh", "/app/venv/bin/python3", "/app/webcam_desktop.py" ]

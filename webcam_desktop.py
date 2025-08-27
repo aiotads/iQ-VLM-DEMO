@@ -181,8 +181,8 @@ def vlm2(image: str, _description: str):
         base_url=LLM_BASE_URL,
     )
 
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader([RUNTIME_PATH, "./"]))
-    template = env.get_template("vlm_prompt.txt")
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(["./", RUNTIME_PATH]))
+    template = env.get_template("iqs_vlm_prompt.txt")
     prompt = template.render()
 
     messages = [
