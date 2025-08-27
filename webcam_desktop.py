@@ -10,11 +10,11 @@ import base64
 import collections
 import dataclasses
 import glob
+import queue
 import sys
 import textwrap
 import threading
 import time
-from queue import Queue
 
 import cv2
 import httpx
@@ -48,7 +48,7 @@ class Message:
     )  # raw BGR image
 
 
-bus: Queue[Message] = Queue()
+bus: queue.Queue[Message] = queue.Queue()
 stopped = threading.Event()
 
 images = collections.deque(maxlen=1)  # JPEG image
@@ -138,9 +138,7 @@ def process():
         try:
             first_response = next(responses)
             response = f"{first_response}"
-
-            vlm_image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-            bus.put(Message(vlm_image=vlm_image, response=response))
+            bus.put(Message(response=response))
 
             for text in responses:
                 response += text
@@ -151,7 +149,7 @@ def process():
             continue
 
 
-def vlm2(image: str, description: str):
+def vlm2(image: str, _description: str):
     llm = ChatOllama(
         model="llava2_7B_FT:latest",
         num_ctx=10000,
@@ -167,7 +165,9 @@ def vlm2(image: str, description: str):
     messages = [
         SystemMessage(
             content=(
-                "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions."
+                "A chat between a curious human and an artificial intelligence "
+                "assistant. The assistant gives helpful, detailed, and polite answers "
+                "to the human's questions."
             )
         ),
         HumanMessage(
@@ -201,12 +201,10 @@ def video_source():
         webcam_dev = search_webcam()
         if not webcam_dev:
             logger.error("No webcam is detected")
-            # nicegui.app.shutdown()
             sys.exit(500)
     else:
         webcam_dev = WEBCAM_DEV
 
-    # pipeline = "pipewiresrc ! queue ! image/jpeg,width=1920,height=1080,framerate=30/1 ! appsink sync=false max-buffers=1 drop=true"
     pipeline = f"""
     v4l2src device={webcam_dev} !
     queue !
@@ -237,34 +235,20 @@ def video_source():
 
 
 def paint():
-    cv2.namedWindow("iq-vlm", cv2.WINDOW_NORMAL | cv2.WINDOW_GUI_NORMAL)
-    cv2.resizeWindow("iq-vlm", 1280, 720)
+    WINDOW_NAME = "iqs-vlm-demo"
+    cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL | cv2.WINDOW_GUI_NORMAL)
+    cv2.resizeWindow(WINDOW_NAME, 1280, 720)
     scence = np.array([])
     image = np.array([])
-    vlm_image = np.array([])
     response = " "
     while True:
         m = bus.get(timeout=2)
         if m.image.size > 0:
             image = m.image
-        if image.size > 0 and m.vlm_image.size > 0:
-            tmp = cv2.resize(m.vlm_image, None, fx=0.35, fy=0.35)
-            vlm_image = cv2.copyMakeBorder(
-                tmp,
-                0,
-                0,
-                0,
-                image.shape[1] - tmp.shape[1],
-                cv2.BORDER_CONSTANT,
-                0,
-            )
         if m.response:
             response = m.response.strip()
 
-        if vlm_image.size > 0:
-            scence = np.concatenate((image, vlm_image), axis=0)
-        else:
-            scence = image
+        scence = image
 
         if scence.size > 0:
             put_wrapped_text(
@@ -278,7 +262,7 @@ def paint():
                 max_width=int(scence.shape[1]),
                 line_spacing=1.5,
             )
-            cv2.imshow("iq-vlm", scence)
+            cv2.imshow(WINDOW_NAME, scence)
         if cv2.waitKey(1) == ord("q"):
             cv2.destroyAllWindows()
             return
