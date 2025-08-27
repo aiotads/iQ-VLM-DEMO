@@ -55,6 +55,29 @@ images = collections.deque(maxlen=1)  # JPEG image
 new_image = threading.Event()
 
 
+def blend_with_background(overlay, background):
+    # separate the alpha channel from the color channels
+    alpha_channel = overlay[:, :, 3] / 255  # convert from 0-255 to 0.0-1.0
+    overlay_colors = overlay[:, :, :3]
+
+    # To take advantage of the speed of numpy and apply transformations to the entire
+    # image with a single operation
+    # the arrays need to be the same shape. However, the shapes currently
+    # looks like this:
+    #    - overlay_colors shape:(width, height, 3)  3 color values for each pixel,
+    #                                               (red, green, blue)
+    #    - alpha_channel  shape:(width, height, 1)  1 single alpha value for each pixel
+    # We will construct an alpha_mask that has the same shape as the
+    # overlay_colors by duplicate the alpha channel
+    # for each color so there is a 1:1 alpha channel for each color channel
+    alpha_mask = alpha_channel[:, :, np.newaxis]
+
+    # combine the background with the overlay image weighted by alpha
+    composite = background * (1 - alpha_mask) + overlay_colors * alpha_mask
+
+    return composite
+
+
 def put_wrapped_text(
     image,
     text,
@@ -63,7 +86,7 @@ def put_wrapped_text(
     font_scale=1.0,
     color=(255, 255, 255),
     thickness=2,
-    bg_color=(0, 0, 0),
+    bg_color=(19, 13, 157),
     max_width=400,
     line_spacing=1.2,
 ):
@@ -92,8 +115,8 @@ def put_wrapped_text(
     wrapped_lines.extend(textwrap.wrap(text, width=max_chars_per_line))
 
     # Measure text block size
-    line_height = int(
-        cv2.getTextSize("Ag", font, font_scale, thickness)[0][1] * line_spacing
+    line_height = (
+        int(cv2.getTextSize("Ag", font, font_scale, thickness)[0][1] * line_spacing) + 3
     )
     block_height = line_height * len(wrapped_lines)
     block_width = max(
@@ -236,8 +259,13 @@ def video_source():
 
 def paint():
     WINDOW_NAME = "iqs-vlm-demo"
+    OGOL = "iVBORw0KGgoAAAANSUhEUgAAAO4AAABiCAMAAABgQh+zAAAATlBMVEUAAADsGiPsGyPqGyPqGyPrGyP////94+P1jZH3qa3tOD/zcXX6xsjtKTH+8fHwVFrzcXb0f4P5uLv81NbyYmjvRk33m5/vRkz4qazycXbNN6odAAAABXRSTlMA35/fYAEB6DsAAANXSURBVHja7dnbcuIwDIDhbbuSHPmUE4S+/4tuk1oTE3sL24ENZfRfhWaM+AiEdPLrWXuBSq/KVa5ylatc5SpXucpVrnKVq1zlKle5P4z78qS9vVb6/QuetPrnVrnKVa5ylatc5SpXucpVrnKVq1zlKle5ylXuA3GjmRvh/o3rJG+W4IsOZq67NdfgXAP3r1knMS7BF1mcI+UqV7l1LrRurvvPXLd0Z+4+lVxJuT+Ge7DWxu9zvZX1Va531t+C29HcEWSzWV55T3N9hNRIHxkAYDt8Lshly18DfkTU242ip8+sW7lMS+tyIsKPAhGdLFe4ETGI+BZnZtkkz6eAqXDK32sCNoSS8yB1AbPokL+ZmFU/M7MLeNZQ4fY4R3xrLjrMcxk3HDFvSF4uSB2kHOJFrsFtVHKjLL4tt6wVbtk7zHnCbWGSQ3KZy3QNVybenUs+51YOb4spIgpnizq8gitvSaC5UOVyL097F24ga608as+4obfWnhKLs4NLdn4gi7p8j7MfUahyWVYfPmHWEm24fgxpdgd34Mq5pi25wY0wd8SlCQAOuNTDkhxRWtcMDEvR/Z0bQFp4OZfTOplxc+4JUlRw5bvD65FqcCmeP1+Y5DwV/JfXzFyHyMTgAkq9vwuXC275o9+nVYJyII1B+CR7LnPRcMktzxR7ceWl58dZonNuexUXyUmxyqXOw+Nwpy23u4Zb/7EauOS+C/YxuLzlumu5BktvyaUTPwcXjlg0ZlwpHOEJvrv1q8iVm2UegOuHDddvuM1X3FRnUk3iepkYjHEoHXfnyhZ5SHUo3CPOhXiZK8kabPOJcVi9e3PlBXbnBzewrMHmX7i24M4ZuYrk3bmMuXfq1/8bOaTtcQIfo6Eq99CYOEHKu8TaTDyQXFjtzfUJiK6LrUtCjGfnIHKEqYIb0zWGiTE2hEtUTOS0h/fmQgxY5GCOBywruWWmnNjKnr25cCi88pnzw7e4vS8myjnB+b25pXfwAOL9Btf52sQOl3h/LvhjBqb8+tZ3PWZR0/CGy03AvKHxUJkoS/hW93dl0/jzX/8pv9ta3quVzGcjFHHaNYG0ub8rk9bh5URZ4vXuvXKVq1zlKle5ylWucpWrXOUqV7nKVa5ylavcR+K+PGdvde4fzR5ttmCaatkAAAAASUVORK5CYII= " # noqa: E501
+
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL | cv2.WINDOW_GUI_NORMAL)
     cv2.resizeWindow(WINDOW_NAME, 1280, 720)
+    ogol = cv2.imdecode(
+        np.frombuffer(base64.b64decode(OGOL), np.uint8), cv2.IMREAD_UNCHANGED
+    )
     scence = np.array([])
     image = np.array([])
     response = " "
@@ -245,6 +273,9 @@ def paint():
         m = bus.get(timeout=2)
         if m.image.size > 0:
             image = m.image
+            image[-ogol.shape[0] :, -ogol.shape[1] :] = blend_with_background(
+                ogol, image[-ogol.shape[0] :, -ogol.shape[1] :]
+            )
         if m.response:
             response = m.response.strip()
 
@@ -255,15 +286,15 @@ def paint():
                 scence,
                 response,
                 (int(scence.shape[1] * 0.03), int(scence.shape[0] * 0.03)),
-                cv2.FONT_HERSHEY_DUPLEX,
+                cv2.FONT_HERSHEY_SIMPLEX,
                 2.0,
                 (255, 255, 255),
-                2,
+                thickness=2,
                 max_width=int(scence.shape[1]),
                 line_spacing=1.5,
             )
             cv2.imshow(WINDOW_NAME, scence)
-        if cv2.waitKey(1) == ord("q"):
+        if cv2.waitKey(3) == ord("q"):
             cv2.destroyAllWindows()
             return
 
