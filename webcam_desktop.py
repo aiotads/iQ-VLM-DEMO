@@ -11,7 +11,6 @@ import collections
 import dataclasses
 import glob
 import queue
-import sys
 import textwrap
 import threading
 import time
@@ -153,7 +152,9 @@ def process():
     response = "┃ "
 
     while not stopped.is_set():
-        new_image.wait()
+        ret = new_image.wait(timeout=2)
+        if not ret:
+            return
 
         image = images.pop()
 
@@ -224,7 +225,7 @@ def video_source():
         webcam_dev = search_webcam()
         if not webcam_dev:
             logger.error("No webcam is detected")
-            sys.exit(500)
+            return
     else:
         webcam_dev = WEBCAM_DEV
 
@@ -238,7 +239,7 @@ def video_source():
     video_capture = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
     if not video_capture.isOpened():
         logger.error("Failed to open {}", webcam_dev)
-        sys.exit(500)
+        return
 
     logger.info("{} is opened", webcam_dev)
 
@@ -259,7 +260,7 @@ def video_source():
 
 def paint():
     WINDOW_NAME = "iqs-vlm-demo"
-    OGOL = "iVBORw0KGgoAAAANSUhEUgAAAO4AAABiCAMAAABgQh+zAAAATlBMVEUAAADsGiPsGyPqGyPqGyPrGyP////94+P1jZH3qa3tOD/zcXX6xsjtKTH+8fHwVFrzcXb0f4P5uLv81NbyYmjvRk33m5/vRkz4qazycXbNN6odAAAABXRSTlMA35/fYAEB6DsAAANXSURBVHja7dnbcuIwDIDhbbuSHPmUE4S+/4tuk1oTE3sL24ENZfRfhWaM+AiEdPLrWXuBSq/KVa5ylatc5SpXucpVrnKVq1zlKle5P4z78qS9vVb6/QuetPrnVrnKVa5ylatc5SpXucpVrnKVq1zlKle5ylXuA3GjmRvh/o3rJG+W4IsOZq67NdfgXAP3r1knMS7BF1mcI+UqV7l1LrRurvvPXLd0Z+4+lVxJuT+Ge7DWxu9zvZX1Va531t+C29HcEWSzWV55T3N9hNRIHxkAYDt8Lshly18DfkTU242ip8+sW7lMS+tyIsKPAhGdLFe4ETGI+BZnZtkkz6eAqXDK32sCNoSS8yB1AbPokL+ZmFU/M7MLeNZQ4fY4R3xrLjrMcxk3HDFvSF4uSB2kHOJFrsFtVHKjLL4tt6wVbtk7zHnCbWGSQ3KZy3QNVybenUs+51YOb4spIgpnizq8gitvSaC5UOVyL097F24ga608as+4obfWnhKLs4NLdn4gi7p8j7MfUahyWVYfPmHWEm24fgxpdgd34Mq5pi25wY0wd8SlCQAOuNTDkhxRWtcMDEvR/Z0bQFp4OZfTOplxc+4JUlRw5bvD65FqcCmeP1+Y5DwV/JfXzFyHyMTgAkq9vwuXC275o9+nVYJyII1B+CR7LnPRcMktzxR7ceWl58dZonNuexUXyUmxyqXOw+Nwpy23u4Zb/7EauOS+C/YxuLzlumu5BktvyaUTPwcXjlg0ZlwpHOEJvrv1q8iVm2UegOuHDddvuM1X3FRnUk3iepkYjHEoHXfnyhZ5SHUo3CPOhXiZK8kabPOJcVi9e3PlBXbnBzewrMHmX7i24M4ZuYrk3bmMuXfq1/8bOaTtcQIfo6Eq99CYOEHKu8TaTDyQXFjtzfUJiK6LrUtCjGfnIHKEqYIb0zWGiTE2hEtUTOS0h/fmQgxY5GCOBywruWWmnNjKnr25cCi88pnzw7e4vS8myjnB+b25pXfwAOL9Btf52sQOl3h/LvhjBqb8+tZ3PWZR0/CGy03AvKHxUJkoS/hW93dl0/jzX/8pv9ta3quVzGcjFHHaNYG0ub8rk9bh5URZ4vXuvXKVq1zlKle5ylWucpWrXOUqV7nKVa5ylavcR+K+PGdvde4fzR5ttmCaatkAAAAASUVORK5CYII= " # noqa: E501
+    OGOL = "iVBORw0KGgoAAAANSUhEUgAAAO4AAABiCAMAAABgQh+zAAAATlBMVEUAAADsGiPsGyPqGyPqGyPrGyP////94+P1jZH3qa3tOD/zcXX6xsjtKTH+8fHwVFrzcXb0f4P5uLv81NbyYmjvRk33m5/vRkz4qazycXbNN6odAAAABXRSTlMA35/fYAEB6DsAAANXSURBVHja7dnbcuIwDIDhbbuSHPmUE4S+/4tuk1oTE3sL24ENZfRfhWaM+AiEdPLrWXuBSq/KVa5ylatc5SpXucpVrnKVq1zlKle5P4z78qS9vVb6/QuetPrnVrnKVa5ylatc5SpXucpVrnKVq1zlKle5ylXuA3GjmRvh/o3rJG+W4IsOZq67NdfgXAP3r1knMS7BF1mcI+UqV7l1LrRurvvPXLd0Z+4+lVxJuT+Ge7DWxu9zvZX1Va531t+C29HcEWSzWV55T3N9hNRIHxkAYDt8Lshly18DfkTU242ip8+sW7lMS+tyIsKPAhGdLFe4ETGI+BZnZtkkz6eAqXDK32sCNoSS8yB1AbPokL+ZmFU/M7MLeNZQ4fY4R3xrLjrMcxk3HDFvSF4uSB2kHOJFrsFtVHKjLL4tt6wVbtk7zHnCbWGSQ3KZy3QNVybenUs+51YOb4spIgpnizq8gitvSaC5UOVyL097F24ga608as+4obfWnhKLs4NLdn4gi7p8j7MfUahyWVYfPmHWEm24fgxpdgd34Mq5pi25wY0wd8SlCQAOuNTDkhxRWtcMDEvR/Z0bQFp4OZfTOplxc+4JUlRw5bvD65FqcCmeP1+Y5DwV/JfXzFyHyMTgAkq9vwuXC275o9+nVYJyII1B+CR7LnPRcMktzxR7ceWl58dZonNuexUXyUmxyqXOw+Nwpy23u4Zb/7EauOS+C/YxuLzlumu5BktvyaUTPwcXjlg0ZlwpHOEJvrv1q8iVm2UegOuHDddvuM1X3FRnUk3iepkYjHEoHXfnyhZ5SHUo3CPOhXiZK8kabPOJcVi9e3PlBXbnBzewrMHmX7i24M4ZuYrk3bmMuXfq1/8bOaTtcQIfo6Eq99CYOEHKu8TaTDyQXFjtzfUJiK6LrUtCjGfnIHKEqYIb0zWGiTE2hEtUTOS0h/fmQgxY5GCOBywruWWmnNjKnr25cCi88pnzw7e4vS8myjnB+b25pXfwAOL9Btf52sQOl3h/LvhjBqb8+tZ3PWZR0/CGy03AvKHxUJkoS/hW93dl0/jzX/8pv9ta3quVzGcjFHHaNYG0ub8rk9bh5URZ4vXuvXKVq1zlKle5ylWucpWrXOUqV7nKVa5ylavcR+K+PGdvde4fzR5ttmCaatkAAAAASUVORK5CYII= "  # noqa: E501
 
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL | cv2.WINDOW_GUI_NORMAL)
     cv2.resizeWindow(WINDOW_NAME, 1280, 720)
@@ -270,7 +271,11 @@ def paint():
     image = np.array([])
     response = " "
     while True:
-        m = bus.get(timeout=2)
+        try:
+            m = bus.get(timeout=2)
+        except queue.Empty:
+            return
+
         if m.image.size > 0:
             image = m.image
             image[-ogol.shape[0] :, -ogol.shape[1] :] = blend_with_background(
@@ -295,7 +300,6 @@ def paint():
             )
             cv2.imshow(WINDOW_NAME, scence)
         if cv2.waitKey(3) == ord("q"):
-            cv2.destroyAllWindows()
             return
 
 
@@ -308,3 +312,4 @@ paint()
 stopped.set()
 t1.join()
 t2.join()
+cv2.destroyAllWindows()
