@@ -11,6 +11,7 @@ import collections
 import dataclasses
 import glob
 import queue
+import signal
 import textwrap
 import threading
 import time
@@ -52,6 +53,16 @@ stopped = threading.Event()
 
 images = collections.deque(maxlen=1)  # JPEG image
 new_image = threading.Event()
+
+
+def _signal_handler(signum, _frame):
+    logger.info("Received signal {} — shutting down", str(signum))
+    # Signal worker threads to exit
+    stopped.set()
+
+# Register handlers for SIGINT and SIGTERM
+signal.signal(signal.SIGINT, _signal_handler)
+signal.signal(signal.SIGTERM, _signal_handler)
 
 
 def blend_with_background(overlay, background):
