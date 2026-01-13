@@ -1,0 +1,2 @@
+Identify and list all safety hazards visible in this workplace image, including unstable structures, poor surface conditions, and environmental dangers.
+**Answer this question about the image succinctly in a short sentence.**
