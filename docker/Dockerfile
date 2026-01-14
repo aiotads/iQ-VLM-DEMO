@@ -23,11 +23,14 @@ RUN apt update && apt --no-install-recommends install -y \
 COPY requirements.txt /app/
 RUN python3 -m venv venv && venv/bin/pip3 install -r requirements.txt
 
-COPY webcam.py webcam_desktop.py docker/env.sh /app/
-COPY resources/vlm_story_prompt.txt /opt/innodisk/ppes/llm/iqs_vlm_prompt.txt
+COPY resources/vlm_story_prompt.txt /app/iqs_vlm_prompt.txt
+COPY videos /app/videos
+COPY prompts /app/prompts
+COPY webcam.py webcam_desktop.py async_safety_video.py docker/env.sh /app/
 
 
 LABEL BSP_VERSION="0.0.1"
 LABEL APP_VERSION="1.0.0"
 WORKDIR  /workspace
-CMD [ "/app/env.sh", "/app/venv/bin/python3", "/app/webcam_desktop.py" ]
+ENTRYPOINT ["/app/env.sh", "/app/venv/bin/python3", "/app/async_safety_video.py"]
+CMD [ "--runtime-dir", "/app/" ]
