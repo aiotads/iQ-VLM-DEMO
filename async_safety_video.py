@@ -6,6 +6,7 @@
 # https://opensource.org/licenses/MIT
 #
 
+import argparse
 import asyncio
 import base64
 import collections
@@ -163,7 +164,7 @@ def put_wrapped_text(
     return image
 
 
-async def vlm2(image: str, user_prompt: str | None = None):
+async def vlm2(image: str, user_prompt: str):
     llm = ChatOllama(
         model="llava2_7B_FT:latest",
         num_ctx=10000,
@@ -171,13 +172,6 @@ async def vlm2(image: str, user_prompt: str | None = None):
         num_predict=256,
         base_url=LLM_BASE_URL,
     )
-
-    if user_prompt is None:
-        env = jinja2.Environment(loader=jinja2.FileSystemLoader(["./", RUNTIME_PATH]))
-        template = env.get_template("iqs_vlm_prompt.txt")
-        prompt = template.render()
-    else:
-        prompt = user_prompt
 
     messages = [
         SystemMessage(
@@ -189,7 +183,7 @@ async def vlm2(image: str, user_prompt: str | None = None):
         ),
         HumanMessage(
             content=[
-                {"type": "text", "text": prompt},
+                {"type": "text", "text": user_prompt},
                 {
                     "type": "image_url",
                     "image_url": {"url": f"data:image/jpeg;base64,{image}"},
@@ -219,9 +213,10 @@ def search_webcam() -> None | str:
     return cams[0]
 
 
-async def video_source():
-    videos = sorted(pathlib.Path(".").glob("videos/*.mp4"))
-    prompts = [pathlib.Path("prompts") / v.with_suffix(".txt").name for v in videos]
+async def video_source(runtime_dir: pathlib.Path):
+    videos = sorted(runtime_dir.glob("videos/*.mp4"))
+    prompts = [runtime_dir / "prompts" / v.with_suffix(".txt").name for v in videos]
+    uvc_prompt = runtime_dir / "iqs_vlm_prompt.txt"
 
     def uvc_pipeline(device: str):
         return f"""
@@ -243,8 +238,13 @@ async def video_source():
             appsink
         """
 
+    class SourceType:
+        VIDEO = 0
+        UVC = 1
+
+    source_type = SourceType.UVC
     current_video = len(videos) - 1
-    current_prompt = None
+    current_prompt = ""
     video_capture = cv2.VideoCapture()
     vlm_task = asyncio.create_task(asyncio.sleep(0))
 
@@ -259,11 +259,15 @@ async def video_source():
             bus.put(Message(response=" "))
 
             webcam_dev = search_webcam()
+            if not webcam_dev and not videos:
+                logger.error("No webcam is detected")
+                return
+
             if webcam_dev:
                 video_capture = cv2.VideoCapture(
                     uvc_pipeline(webcam_dev), cv2.CAP_GSTREAMER
                 )
-                current_prompt = None
+                source_type = SourceType.UVC
                 logger.info("{} is opened", webcam_dev)
             else:
                 current_video = (current_video + 1) % len(videos)
@@ -272,6 +276,7 @@ async def video_source():
                 video_capture = cv2.VideoCapture(
                     video_pipeline(str(video_path)), cv2.CAP_GSTREAMER
                 )
+                source_type = SourceType.VIDEO
                 logger.info("{} is opened", video_path.name)
             continue
 
@@ -282,8 +287,12 @@ async def video_source():
         bus.put(Message(image=raw))
 
         if vlm_task.done():
+            user_prompt = current_prompt
+            if source_type == SourceType.UVC:
+                user_prompt = pathlib.Path(uvc_prompt).read_text()
+
             vlm_task = asyncio.create_task(
-                vlm2(base64.b64encode(frame).decode(), current_prompt)
+                vlm2(base64.b64encode(frame).decode(), user_prompt)
             )
 
 
@@ -314,6 +323,8 @@ def paint():
             )
         if m.response:
             response = m.response.strip()
+            if response.startswith("1."):
+                response = response[2:].strip()
 
         scence = image
 
@@ -345,7 +356,16 @@ def paint():
 
 
 async def main():
-    video_source_task = asyncio.create_task(video_source())
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--runtime-dir",
+        type=pathlib.Path,
+        default=pathlib.Path.cwd(),
+        help="Runtime directory (default: current working directory)"
+    )
+    args = parser.parse_args()
+
+    video_source_task = asyncio.create_task(video_source(args.runtime_dir))
     await asyncio.to_thread(paint)
     stopped.set()
     await video_source_task
