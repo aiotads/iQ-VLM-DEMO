@@ -19,10 +19,10 @@ import re
 import signal
 import textwrap
 import threading
+from enum import Enum
 
 import cv2
 import httpx
-import jinja2
 import numpy as np
 import numpy.typing as npt
 import urllib3
@@ -41,15 +41,18 @@ WEBCAM_DEV = None  # Search for the first one
 urllib3.disable_warnings()
 
 
+class SourceType(Enum):
+    VIDEO = 0
+    UVC = 1
+
+
 @dataclasses.dataclass
 class Message:
     image: npt.NDArray = dataclasses.field(
         default_factory=lambda: np.array([])
     )  # raw BGR image
     response: str = ""
-    vlm_image: npt.NDArray = dataclasses.field(
-        default_factory=lambda: np.array([])
-    )  # raw BGR image
+    source_type: SourceType = SourceType.UVC
 
 
 bus: queue.Queue[Message] = queue.Queue()
@@ -68,6 +71,33 @@ def _signal_handler(signum, _frame):
 # Register handlers for SIGINT and SIGTERM
 signal.signal(signal.SIGINT, _signal_handler)
 signal.signal(signal.SIGTERM, _signal_handler)
+
+
+def select_color(source_type: SourceType, text: str) -> tuple[int, int, int]:
+    red = (19, 13, 157)
+    green = (29, 113, 37)
+    black = (22, 22, 22)
+
+    if source_type == SourceType.VIDEO:
+        DANGER_PATTERN = r"\b(no|fires?|flames?|hazard|lying|laying|wet|smoke|sparking|slippery|puddle|falling)\b"  # noqa: E501
+        GOOD_PATTERN = r"\b(yes)\b"
+
+        danger = re.search(DANGER_PATTERN, text.lower())
+        good = re.search(GOOD_PATTERN, text.lower())
+        if danger:
+            return red
+        elif good:
+            return green
+        else:
+            return black
+    elif source_type == SourceType.UVC:
+        GOOD_PATTERN = r"\b(blue hat|hard hat|blue hard hat|blue helmet|yellow vest)\b"
+
+        good = re.search(GOOD_PATTERN, text.lower())
+        if good:
+            return green
+        else:
+            return red
 
 
 def blend_with_background(overlay, background):
@@ -192,7 +222,6 @@ async def vlm2(image: str, user_prompt: str):
         ),
     ]
 
-
     try:
         responses = llm.astream(messages)
         first_response = await anext(responses)
@@ -240,10 +269,6 @@ async def video_source(runtime_dir: pathlib.Path):
             appsink
         """
 
-    class SourceType:
-        VIDEO = 0
-        UVC = 1
-
     source_type = SourceType.UVC
     current_video = len(videos) - 1
     current_prompt = ""
@@ -286,7 +311,7 @@ async def video_source(runtime_dir: pathlib.Path):
         if raw is None:
             continue
 
-        bus.put(Message(image=raw))
+        bus.put(Message(image=raw, source_type=source_type))
 
         if vlm_task.done():
             user_prompt = current_prompt
@@ -301,8 +326,6 @@ async def video_source(runtime_dir: pathlib.Path):
 def paint():
     WINDOW_NAME = "iqs-vlm-demo"
     OGOL = "iVBORw0KGgoAAAANSUhEUgAAAO4AAABiCAMAAABgQh+zAAAATlBMVEUAAADsGiPsGyPqGyPqGyPrGyP////94+P1jZH3qa3tOD/zcXX6xsjtKTH+8fHwVFrzcXb0f4P5uLv81NbyYmjvRk33m5/vRkz4qazycXbNN6odAAAABXRSTlMA35/fYAEB6DsAAANXSURBVHja7dnbcuIwDIDhbbuSHPmUE4S+/4tuk1oTE3sL24ENZfRfhWaM+AiEdPLrWXuBSq/KVa5ylatc5SpXucpVrnKVq1zlKle5P4z78qS9vVb6/QuetPrnVrnKVa5ylatc5SpXucpVrnKVq1zlKle5ylXuA3GjmRvh/o3rJG+W4IsOZq67NdfgXAP3r1knMS7BF1mcI+UqV7l1LrRurvvPXLd0Z+4+lVxJuT+Ge7DWxu9zvZX1Va531t+C29HcEWSzWV55T3N9hNRIHxkAYDt8Lshly18DfkTU242ip8+sW7lMS+tyIsKPAhGdLFe4ETGI+BZnZtkkz6eAqXDK32sCNoSS8yB1AbPokL+ZmFU/M7MLeNZQ4fY4R3xrLjrMcxk3HDFvSF4uSB2kHOJFrsFtVHKjLL4tt6wVbtk7zHnCbWGSQ3KZy3QNVybenUs+51YOb4spIgpnizq8gitvSaC5UOVyL097F24ga608as+4obfWnhKLs4NLdn4gi7p8j7MfUahyWVYfPmHWEm24fgxpdgd34Mq5pi25wY0wd8SlCQAOuNTDkhxRWtcMDEvR/Z0bQFp4OZfTOplxc+4JUlRw5bvD65FqcCmeP1+Y5DwV/JfXzFyHyMTgAkq9vwuXC275o9+nVYJyII1B+CR7LnPRcMktzxR7ceWl58dZonNuexUXyUmxyqXOw+Nwpy23u4Zb/7EauOS+C/YxuLzlumu5BktvyaUTPwcXjlg0ZlwpHOEJvrv1q8iVm2UegOuHDddvuM1X3FRnUk3iepkYjHEoHXfnyhZ5SHUo3CPOhXiZK8kabPOJcVi9e3PlBXbnBzewrMHmX7i24M4ZuYrk3bmMuXfq1/8bOaTtcQIfo6Eq99CYOEHKu8TaTDyQXFjtzfUJiK6LrUtCjGfnIHKEqYIb0zWGiTE2hEtUTOS0h/fmQgxY5GCOBywruWWmnNjKnr25cCi88pnzw7e4vS8myjnB+b25pXfwAOL9Btf52sQOl3h/LvhjBqb8+tZ3PWZR0/CGy03AvKHxUJkoS/hW93dl0/jzX/8pv9ta3quVzGcjFHHaNYG0ub8rk9bh5URZ4vXuvXKVq1zlKle5ylWucpWrXOUqV7nKVa5ylavcR+K+PGdvde4fzR5ttmCaatkAAAAASUVORK5CYII= "  # noqa: E501
-    DANGER_PATTERN = r"\b(no|fires?|flames?|hazard|lying|laying|wet|smoke|sparking|slippery|puddle|falling)\b"
-    GOOD_PATTERN = r"\b(yes)\b"
 
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL | cv2.WINDOW_GUI_NORMAL)
     cv2.resizeWindow(WINDOW_NAME, int(1920 * 0.90), int(1080 * 0.90))
@@ -311,6 +334,7 @@ def paint():
     )
     scence = np.array([])
     image = np.array([])
+    source_type = SourceType.UVC
     response = " "
     while True:
         try:
@@ -323,21 +347,14 @@ def paint():
             image[-ogol.shape[0] :, -ogol.shape[1] :] = blend_with_background(
                 ogol, image[-ogol.shape[0] :, -ogol.shape[1] :]
             )
+            source_type = m.source_type
         if m.response:
             response = m.response.strip()
             if response.startswith("1."):
                 response = response[2:].strip()
 
         scence = image
-
-        danger = re.search(DANGER_PATTERN, response.lower())
-        good = re.search(GOOD_PATTERN, response.lower())
-        if danger:
-            bg_color = (19, 13, 157)
-        elif good:
-            bg_color = (29, 113, 37)
-        else:
-            bg_color = (22, 22, 22)
+        bg_color = select_color(source_type, response)
 
         if scence.size > 0:
             put_wrapped_text(
@@ -363,7 +380,7 @@ async def main():
         "--runtime-dir",
         type=pathlib.Path,
         default=pathlib.Path.cwd(),
-        help="Runtime directory (default: current working directory)"
+        help="Runtime directory (default: current working directory)",
     )
     args = parser.parse_args()
 
