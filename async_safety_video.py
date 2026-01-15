@@ -192,17 +192,19 @@ async def vlm2(image: str, user_prompt: str):
         ),
     ]
 
-    responses = llm.astream(messages)
-    first_response = await anext(responses)
-    response = f"{first_response.text()}"
 
     try:
+        responses = llm.astream(messages)
+        first_response = await anext(responses)
+        response = f"{first_response.text()}"
+
         async for chunk in responses:
             response += chunk.text()
             bus.put(Message(response=response))
     except httpx.HTTPError as e:
         message = "Unable to talk to the Ollama server"
         logger.error("{}: {} {}", message, e.request, e)
+        await asyncio.sleep(1)
 
 
 def search_webcam() -> None | str:
