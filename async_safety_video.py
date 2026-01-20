@@ -13,6 +13,7 @@ import collections
 import contextlib
 import dataclasses
 import glob
+import json
 import pathlib
 import queue
 import re
@@ -26,8 +27,6 @@ import httpx
 import numpy as np
 import numpy.typing as npt
 import urllib3
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 from loguru import logger
 
 LLM_BASE_URL = "http://127.0.0.1:22434"
@@ -195,41 +194,35 @@ def put_wrapped_text(
 
 
 async def vlm2(image: str, user_prompt: str):
-    llm = ChatOllama(
-        model="llava2_7B_FT:latest",
-        num_ctx=10000,
-        temperature=0.8,
-        num_predict=256,
-        base_url=LLM_BASE_URL,
-    )
+    model = "llava2_7B_FT:latest"
 
     messages = [
-        SystemMessage(
-            content=(
+        {
+            "role": "system",
+            "content": (
                 "A chat between a curious human and an artificial intelligence "
                 "assistant. The assistant gives helpful, detailed, and polite answers "
                 "to the human's questions. Keep your response short and concise."
-            )
-        ),
-        HumanMessage(
-            content=[
-                {"type": "text", "text": user_prompt},
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{image}"},
-                },
-            ]
-        ),
+            ),
+        },
+        {"role": "user", "content": user_prompt, "images": [image]},
     ]
 
     try:
-        responses = llm.astream(messages)
-        first_response = await anext(responses)
-        response = f"{first_response.text()}"
+        client = httpx.AsyncClient(timeout=5)
+        response = ""
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": True,
+        }
 
-        async for chunk in responses:
-            response += chunk.text()
-            bus.put(Message(response=response))
+        async with client.stream(
+            "POST", f"{LLM_BASE_URL}/api/chat", json=payload
+        ) as responses:
+            async for chunk in responses.aiter_lines():
+                response += json.loads(chunk)["message"]["content"]
+                bus.put(Message(response=response))
     except httpx.HTTPError as e:
         message = "Unable to talk to the Ollama server"
         logger.error("{}: {} {}", message, e.request, e)
