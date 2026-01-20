@@ -284,6 +284,7 @@ async def video_source(runtime_dir: pathlib.Path):
                 return
 
             if webcam_dev:
+                video_capture.release()
                 video_capture = cv2.VideoCapture(
                     uvc_pipeline(webcam_dev), cv2.CAP_GSTREAMER
                 )
@@ -293,6 +294,7 @@ async def video_source(runtime_dir: pathlib.Path):
                 current_video = (current_video + 1) % len(videos)
                 current_prompt = pathlib.Path(prompts[current_video]).read_text()
                 video_path = videos[current_video]
+                video_capture.release()
                 video_capture = cv2.VideoCapture(
                     video_pipeline(str(video_path)), cv2.CAP_GSTREAMER
                 )
